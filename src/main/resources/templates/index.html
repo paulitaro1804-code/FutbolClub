@@ -1,0 +1,309 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Futbol Club - Inicio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+  <div th:replace="fragments/layout :: navbar"></div>
+
+  <!-- HERO FULLSCREEN -->
+  <section class="hero-fullscreen">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <span class="badge-pill mb-3"><i class="bi bi-shield-fill me-1"></i> Bienvenido al Club</span>
+      <h1 class="hero-title">Tu plataforma deportiva<br>para la gestion<br><span class="hero-title-accent">profesional del futbol</span></h1>
+      <p class="hero-subtitle">Administra clubes, equipos, jugadores y partidos con una experiencia visual premium de alto rendimiento.</p>
+      <div class="hero-actions">
+        <a href="/clubes" class="hero-btn"><i class="bi bi-shield-fill"></i> Ir a Clubes</a>
+        <a href="/partidos" class="hero-btn hero-btn-outline"><i class="bi bi-trophy-fill"></i> Ver Partidos</a>
+      </div>
+    </div>
+    <a href="#main-content" class="hero-scroll-hint" aria-label="Desplazar hacia abajo">
+      <i class="bi bi-chevron-double-down"></i>
+    </a>
+  </section>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip-wrapper" id="main-content">
+    <div class="container">
+      <div class="stats-strip">
+        <div class="stat-item">
+          <span class="stat-icon"><i class="bi bi-shield-fill"></i></span>
+          <span class="stat-num" id="countClubes">--</span>
+          <span class="stat-lbl">Clubes</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-icon"><i class="bi bi-people-fill"></i></span>
+          <span class="stat-num" id="countEquipos">--</span>
+          <span class="stat-lbl">Equipos</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-icon"><i class="bi bi-person-badge-fill"></i></span>
+          <span class="stat-num" id="countJugadores">--</span>
+          <span class="stat-lbl">Jugadores</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-icon"><i class="bi bi-trophy-fill"></i></span>
+          <span class="stat-num" id="countPartidos">--</span>
+          <span class="stat-lbl">Partidos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container app-main">
+
+    <!-- PARTIDOS RECIENTES -->
+    <section class="section-panel fade-in">
+      <div class="section-heading">
+        <div>
+          <span class="section-tag"><i class="bi bi-trophy-fill"></i> Partidos</span>
+          <h2>Partidos recientes</h2>
+          <p>Los últimos cruces registrados en el sistema.</p>
+        </div>
+        <a href="/partidos" class="btn-section-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-group-grid" id="partidos-home"></div>
+    </section>
+
+    <!-- EQUIPOS -->
+    <section class="section-panel fade-in">
+      <div class="section-heading">
+        <div>
+          <span class="section-tag"><i class="bi bi-people-fill"></i> Equipos</span>
+          <h2>Equipos</h2>
+          <p>Todas las formaciones y categorías del club.</p>
+        </div>
+        <a href="/equipos" class="btn-section-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-group-grid" id="equipos-home"></div>
+    </section>
+
+    <!-- JUGADORES DESTACADOS -->
+    <section class="section-panel fade-in">
+      <div class="section-heading">
+        <div>
+          <span class="section-tag"><i class="bi bi-person-badge-fill"></i> Jugadores</span>
+          <h2>Jugadores</h2>
+          <p>La plantilla completa con dorsales y posiciones destacadas.</p>
+        </div>
+        <a href="/jugadores" class="btn-section-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-group-grid" id="jugadores-home"></div>
+    </section>
+
+    <!-- CLUBES -->
+    <section class="section-panel fade-in">
+      <div class="section-heading">
+        <div>
+          <span class="section-tag"><i class="bi bi-shield-fill"></i> Clubes</span>
+          <h2>Clubes registrados</h2>
+          <p>Historia e información de cada institución del sistema.</p>
+        </div>
+        <a href="/clubes" class="btn-section-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-group-grid" id="clubes-home"></div>
+    </section>
+
+  </main>
+
+  <div th:replace="fragments/layout :: footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await Promise.all([
+        loadStats(),
+        loadPartidos(),
+        loadEquipos(),
+        loadJugadores(),
+        loadClubes()
+      ]);
+      initFadeIn();
+    });
+
+    async function loadStats() {
+      try {
+        const [clubes, equipos, jugadores, partidos] = await Promise.all([
+          fetch('/api/clubes').then(r => r.json()),
+          fetch('/api/equipos').then(r => r.json()),
+          fetch('/api/jugadores').then(r => r.json()),
+          fetch('/api/partidos').then(r => r.json())
+        ]);
+        animateCount('countClubes', Array.isArray(clubes) ? clubes.length : 0);
+        animateCount('countEquipos', Array.isArray(equipos) ? equipos.length : 0);
+        animateCount('countJugadores', Array.isArray(jugadores) ? jugadores.length : 0);
+        animateCount('countPartidos', Array.isArray(partidos) ? partidos.length : 0);
+      } catch (e) { /* silence - stats are decorative */ }
+    }
+
+    function animateCount(id, target) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (target === 0) { el.textContent = '0'; return; }
+      let current = 0;
+      const step = Math.max(1, Math.ceil(target / 22));
+      const timer = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = current;
+        if (current >= target) clearInterval(timer);
+      }, 55);
+    }
+
+    async function loadPartidos() {
+      const container = document.getElementById('partidos-home');
+      try {
+        const partidos = await fetch('/api/partidos').then(r => r.json());
+        if (!Array.isArray(partidos) || partidos.length === 0) {
+          container.innerHTML = emptyCard('No hay partidos registrados aun.');
+          return;
+        }
+        container.innerHTML = partidos.slice(0, 3).map((p, i) => {
+          const fecha = p.fecha
+            ? new Date(p.fecha).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+            : '--';
+          return `
+            <article class="match-card ${i === 0 ? 'highlight' : ''}">
+              <div class="match-score">
+                <span class="team">${esc(p.local && p.local.nombre ? p.local.nombre : 'Local')}</span>
+                <span class="score">${p.golesLocal != null ? p.golesLocal : 0} - ${p.golesVisitante != null ? p.golesVisitante : 0}</span>
+                <span class="team">${esc(p.visitante && p.visitante.nombre ? p.visitante.nombre : 'Visitante')}</span>
+              </div>
+              <div class="match-meta">
+                <span><i class="bi bi-calendar-event"></i> ${fecha}</span>
+                <span><i class="bi bi-geo-alt"></i> ${esc(p.estadio || '--')}</span>
+              </div>
+              <div class="actions">
+                <a href="/partidos" class="btn btn-sm btn-outline-light">Ver partidos</a>
+              </div>
+            </article>`;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = emptyCard('No se pudieron cargar los partidos.');
+      }
+    }
+
+    async function loadEquipos() {
+      const container = document.getElementById('equipos-home');
+      try {
+        const equipos = await fetch('/api/equipos').then(r => r.json());
+        if (!Array.isArray(equipos) || equipos.length === 0) {
+          container.innerHTML = emptyCard('Sin equipos registrados.');
+          return;
+        }
+        container.innerHTML = equipos.slice(0, 3).map((e, i) => `
+          <article class="item-card">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+              <div class="avatar">${esc((e.nombre || 'E').charAt(0).toUpperCase())}</div>
+              <span class="badge-pill">Equipo ${i + 1}</span>
+            </div>
+            <h3>${esc(e.nombre || 'N/A')}</h3>
+            <div class="meta">
+              <span><strong>Categoria:</strong> ${esc(e.categoria || '--')}</span>
+              <span><strong>Club:</strong> ${esc(e.club && e.club.nombre ? e.club.nombre : '--')}</span>
+            </div>
+            <div class="actions">
+              <a href="/equipos" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-right-circle me-1"></i>Ver equipo</a>
+            </div>
+          </article>`).join('');
+      } catch (e) {
+        container.innerHTML = emptyCard('No se pudieron cargar los equipos.');
+      }
+    }
+
+    async function loadJugadores() {
+      const container = document.getElementById('jugadores-home');
+      try {
+        const jugadores = await fetch('/api/jugadores').then(r => r.json());
+        if (!Array.isArray(jugadores) || jugadores.length === 0) {
+          container.innerHTML = emptyCard('Sin jugadores registrados.');
+          return;
+        }
+        container.innerHTML = jugadores.slice(0, 3).map(j => {
+          const pos = j.posicion || '';
+          const posCls = 'pos-' + pos.toLowerCase().replace(/[^\w]/g, '-');
+          return `
+            <article class="item-card">
+              <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="avatar">${esc((j.nombre || 'J').charAt(0).toUpperCase())}</div>
+                <span class="badge-pill badge-dorsal">#${j.dorsal || '?'}</span>
+              </div>
+              <h3>${esc(j.nombre || 'N/A')}</h3>
+              <div class="meta">
+                <span><strong>Posicion:</strong> <span class="pos-badge ${posCls}">${esc(pos || '--')}</span></span>
+                <span><strong>Equipo:</strong> ${esc(j.equipo && j.equipo.nombre ? j.equipo.nombre : '--')}</span>
+              </div>
+              <div class="actions">
+                <a href="/jugadores" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-right-circle me-1"></i>Ver jugador</a>
+              </div>
+            </article>`;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = emptyCard('No se pudieron cargar los jugadores.');
+      }
+    }
+
+    async function loadClubes() {
+      const container = document.getElementById('clubes-home');
+      try {
+        const clubes = await fetch('/api/clubes').then(r => r.json());
+        if (!Array.isArray(clubes) || clubes.length === 0) {
+          container.innerHTML = emptyCard('Sin clubes registrados.');
+          return;
+        }
+        container.innerHTML = clubes.slice(0, 3).map((c, i) => `
+          <article class="item-card">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+              <div class="avatar">${esc((c.nombre || 'C').charAt(0).toUpperCase())}</div>
+              <span class="badge-pill">Club ${i + 1}</span>
+            </div>
+            <h3>${esc(c.nombre || 'N/A')}</h3>
+            <div class="meta">
+              <span><i class="bi bi-geo-alt-fill me-1" style="color:var(--accent)"></i>${esc(c.ciudad || '--')}</span>
+              <span><i class="bi bi-calendar2-fill me-1" style="color:var(--accent)"></i>Fundado en ${esc(String(c.fundacion || '--'))}</span>
+            </div>
+            <div class="actions">
+              <a href="/clubes" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-right-circle me-1"></i>Ver club</a>
+            </div>
+          </article>`).join('');
+      } catch (e) {
+        container.innerHTML = emptyCard('No se pudieron cargar los clubes.');
+      }
+    }
+
+    function emptyCard(msg) {
+      return `<article class="item-card" style="justify-content:center;align-items:center;min-height:140px"><p style="color:var(--muted);margin:0">${msg}</p></article>`;
+    }
+
+    function esc(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function initFadeIn() {
+      const els = document.querySelectorAll('.fade-in');
+      if (!('IntersectionObserver' in window)) {
+        els.forEach(el => el.classList.add('visible'));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.08 });
+      els.forEach(el => io.observe(el));
+    }
+  </script>
+</body>
+</html>

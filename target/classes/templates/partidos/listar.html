@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Partidos • Fútbol Club</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+  <div th:replace="fragments/layout :: navbar"></div>
+
+  <main class="container app-main">
+    <div class="app-page-header">
+      <div>
+        <span class="badge-pill">Partidos</span>
+        <h1 class="app-page-title"><i class="bi bi-trophy-fill me-2"></i>Partidos</h1>
+        <p class="app-page-subtitle">Organiza las fechas, marcadores y sedes dentro de un panel moderno de fixtures.</p>
+      </div>
+      <button id="btnAddPartido" class="btn btn-primary btn-lg"><i class="bi bi-plus-lg"></i> Nuevo partido</button>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <section class="section-panel">
+      <div class="card-group-grid" id="partido-grid"></div>
+    </section>
+
+    <div class="footer-cta">
+      <a href="/" class="btn btn-outline-light"><i class="bi bi-arrow-left"></i> Volver al inicio</a>
+    </div>
+  </main>
+
+  <div class="modal fade" id="partidoModal" tabindex="-1" aria-labelledby="partidoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="partidoForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="partidoModalLabel">Nuevo partido</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="partidoId">
+            <div class="mb-3">
+              <label for="partidoFecha" class="form-label">Fecha y hora</label>
+              <input type="datetime-local" id="partidoFecha" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="partidoEstadio" class="form-label">Estadio</label>
+              <input type="text" id="partidoEstadio" class="form-control" placeholder="Santiago Bernabéu" required>
+            </div>
+            <div class="row g-3">
+              <div class="col-6">
+                <label for="partidoLocal" class="form-label">Equipo local</label>
+                <select id="partidoLocal" class="form-select" required>
+                  <option value="">Selecciona local</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label for="partidoVisitante" class="form-label">Equipo visitante</label>
+                <select id="partidoVisitante" class="form-select" required>
+                  <option value="">Selecciona visitante</option>
+                </select>
+              </div>
+            </div>
+            <div class="row g-3 mt-3">
+              <div class="col-6">
+                <label for="partidoGolesLocal" class="form-label">Goles local</label>
+                <input type="number" id="partidoGolesLocal" class="form-control" value="0" min="0" required>
+              </div>
+              <div class="col-6">
+                <label for="partidoGolesVisitante" class="form-label">Goles visitante</label>
+                <input type="number" id="partidoGolesVisitante" class="form-control" value="0" min="0" required>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div th:replace="fragments/layout :: footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const partidoModal = new bootstrap.Modal(document.getElementById('partidoModal'));
+    const partidoForm = document.getElementById('partidoForm');
+    const partidoGrid = document.getElementById('partido-grid');
+    const selectLocal = document.getElementById('partidoLocal');
+    const selectVisitante = document.getElementById('partidoVisitante');
+    const alertContainer = document.getElementById('alertContainer');
+    const btnAddPartido = document.getElementById('btnAddPartido');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadEquipos();
+      loadPartidos();
+      btnAddPartido.addEventListener('click', () => openPartidoModal());
+      partidoForm.addEventListener('submit', savePartido);
+    });
+
+    async function loadEquipos() {
+      try {
+        const response = await fetch('/api/equipos');
+        const equipos = await response.json();
+        selectLocal.innerHTML = '<option value="">Selecciona local</option>';
+        selectVisitante.innerHTML = '<option value="">Selecciona visitante</option>';
+        equipos.forEach(equipo => {
+          const optionLocal = document.createElement('option');
+          optionLocal.value = equipo.id;
+          optionLocal.textContent = equipo.nombre;
+          selectLocal.appendChild(optionLocal);
+          const optionVisitante = document.createElement('option');
+          optionVisitante.value = equipo.id;
+          optionVisitante.textContent = equipo.nombre;
+          selectVisitante.appendChild(optionVisitante);
+        });
+      } catch (error) {
+        showAlert('Error al cargar equipos. ' + error.message, 'danger');
+      }
+    }
+
+    async function loadPartidos() {
+      try {
+        const response = await fetch('/api/partidos');
+        const partidos = await response.json();
+        renderPartidos(partidos);
+      } catch (error) {
+        showAlert('Error al cargar partidos. ' + error.message, 'danger');
+      }
+    }
+
+    function renderPartidos(partidos) {
+      partidoGrid.innerHTML = '';
+      if (!Array.isArray(partidos) || partidos.length === 0) {
+        partidoGrid.innerHTML = `
+          <article class="match-card text-center">
+            <div class="card-body">
+              <h3>No hay partidos registrados</h3>
+              <p>Agrega un partido para mostrarlo en el panel de fixtures.</p>
+            </div>
+          </article>
+        `;
+        return;
+      }
+
+      partidos.forEach((partido, index) => {
+        const fecha = partido.fecha ? new Date(partido.fecha).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+        const card = document.createElement('article');
+        card.className = index === 0 ? 'match-card highlight' : 'match-card';
+        card.innerHTML = `
+          <div class="match-score">
+            <span class="team">${partido.local?.nombre || 'Sin local'}</span>
+            <span class="score">${partido.golesLocal ?? 0} - ${partido.golesVisitante ?? 0}</span>
+            <span class="team">${partido.visitante?.nombre || 'Sin visitante'}</span>
+          </div>
+          <div class="match-meta">
+            <span><i class="bi bi-calendar-event"></i> ${fecha}</span>
+            <span><i class="bi bi-geo-alt"></i> ${partido.estadio || '-'}</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-sm btn-outline-light">Editar</button>
+            <button type="button" class="btn btn-sm btn-outline-danger">Eliminar</button>
+          </div>
+        `;
+        const buttons = card.querySelectorAll('button');
+        buttons[0].addEventListener('click', () => openPartidoModal(partido));
+        buttons[1].addEventListener('click', () => deletePartido(partido.id));
+        partidoGrid.appendChild(card);
+      });
+    }
+
+    function openPartidoModal(partido = null) {
+      document.getElementById('partidoId').value = partido ? partido.id : '';
+      document.getElementById('partidoFecha').value = partido ? (partido.fecha ? partido.fecha.substring(0, 16) : '') : '';
+      document.getElementById('partidoEstadio').value = partido ? partido.estadio : '';
+      document.getElementById('partidoLocal').value = partido?.local?.id || '';
+      document.getElementById('partidoVisitante').value = partido?.visitante?.id || '';
+      document.getElementById('partidoGolesLocal').value = partido?.golesLocal ?? 0;
+      document.getElementById('partidoGolesVisitante').value = partido?.golesVisitante ?? 0;
+      document.getElementById('partidoModalLabel').textContent = partido ? 'Editar partido' : 'Nuevo partido';
+      partidoModal.show();
+    }
+
+    async function savePartido(event) {
+      event.preventDefault();
+      const id = document.getElementById('partidoId').value;
+      const payload = {
+        fecha: document.getElementById('partidoFecha').value,
+        estadio: document.getElementById('partidoEstadio').value.trim(),
+        localId: document.getElementById('partidoLocal').value,
+        visitanteId: document.getElementById('partidoVisitante').value,
+        golesLocal: Number(document.getElementById('partidoGolesLocal').value),
+        golesVisitante: Number(document.getElementById('partidoGolesVisitante').value)
+      };
+
+      try {
+        const response = await fetch(id ? `/api/partidos/${id}` : '/api/partidos', {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error('No se pudo guardar el partido');
+        }
+        showAlert(`Partido ${id ? 'actualizado' : 'creado'} correctamente.`);
+        partidoModal.hide();
+        loadPartidos();
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+
+    async function deletePartido(id) {
+      if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
+      try {
+        const response = await fetch(`/api/partidos/${id}`, { method: 'DELETE' });
+        if (!response.ok) {
+          throw new Error('No se pudo eliminar el partido');
+        }
+        showAlert('Partido eliminado correctamente.', 'warning');
+        loadPartidos();
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+
+    function showAlert(message, type = 'success') {
+      alertContainer.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
